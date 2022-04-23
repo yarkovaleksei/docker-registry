@@ -1,0 +1,54 @@
+version: '3.9'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  registry:
+    image: registry:2.7.1
+    container_name: registry
+    restart: always
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/registry.password
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /data
+    volumes:
+      - ./registry/auth:/auth
+      - ./registry/data:/data
+      - ./registry/config.yml:/etc/docker/registry/config.yml
+    networks:
+      - app-network
+    env_file:
+      - .env
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/templates/default.conf.template
+      - ./nginx/nginx-override.conf:/etc/nginx/conf.d/nginx-override.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - registry
+    networks:
+      - app-network
+    env_file:
+      - .env
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - nginx
+    env_file:
+      - .env

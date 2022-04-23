@@ -1,0 +1,1 @@
+0 12 * * * /docker-registry/ssl_renew.sh >> /var/log/cron.log
